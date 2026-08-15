@@ -1,0 +1,619 @@
+/* ==================================================================
+ *  SAYFAYA ÖZEL STİLLER
+ *  cilginyazilim.com – Sürükle-Bırak Görev Panosu
+ * ------------------------------------------------------------------
+ *  DİKKAT: Genel marka stilleri "cilginyazilim.css" dosyasındadır.
+ *  Bu dosya SADECE bu sayfaya özgü eklemeleri içerir. Böylece tasarım
+ *  kalıbını başka projeye taşırken bu dosyayı götürmeniz gerekmez.
+ *
+ *  Yükleme sırası:
+ *    bootstrap.min.css  →  cilginyazilim.css  →  style.css
+ * ================================================================== */
+
+/* Pano yatayda geniş olduğu için sayfa da geniş; ama kenarlarda
+ * nefes payı kalsın. */
+.cy-board-container {
+    max-width: 1600px;
+}
+
+
+/* ==================================================================
+ *  GİZLİ YERLEŞİM HATASI DÜZELTMESİ: form-sarmalı modal genişliği
+ * ------------------------------------------------------------------
+ *  "Görev Ekle/Düzenle" modalında .modal-content, bir <form> etiketi
+ *  içine sarılıdır: .modal-dialog > form > .modal-content.
+ *
+ *  SORUN: Bootstrap'in ".modal-dialog-centered" sınıfı modal-dialog'u
+ *  bir FLEX KONTEYNER yapar (dikeyde ortalamak için). Bu konteynerin
+ *  doğrudan çocuğu artık .modal-content DEĞİL, aradaki <form>'dur —
+ *  ve <form>'un flex-grow'u yoktur. Flexbox'ta grow'suz bir öğe,
+ *  konteynerin GENİŞLİĞİNİ DOLDURMAZ; kendi İÇERİĞİNE göre büzülür.
+ *  Sonuç: modal-xl 1140px genişlik istese bile <form> ~575px'e
+ *  küçülür ve modal-content de onu izler — modal olması gerekenden
+ *  çok dar görünür. (Bu, modal-lg günlerinden beri sessizce
+ *  vardı; modal-xl'e geçince fark edilir hâle geldi.)
+ *
+ *  ÇÖZÜM: <form>'a width:100% vermek — tıpkı Bootstrap'in kendi
+ *  .modal-content{width:100%} kuralının NORMALDE (form arada
+ *  olmadığında) yaptığı gibi. Böylece <form> flex-basis:auto
+ *  hesaplamasında "içeriğe göre büzül" yerine "konteyneri doldur"
+ *  davranışını alır.
+ * ================================================================== */
+.cy-modal .modal-dialog > form {
+    width: 100%;
+}
+
+/* Pano gövdesinde iç boşluğu azaltıyoruz: sütunların kendi
+ * boşlukları zaten var, üst üste binince kart daralıyor. */
+.cy-card__body--board {
+    padding: 1rem;
+}
+
+
+/* ==================================================================
+ *  PANO VE SÜTUNLAR
+ * ================================================================== */
+
+/* Sütunlar yan yana dizilir ve ekrana sığmazsa pano YATAY kayar.
+ * Sayfanın tamamının kaymasındansa yalnızca panonun kayması,
+ * başlık ve arama kutusunun ekranda kalmasını sağlar. */
+.cy-board {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: .75rem;
+
+    /* İnce kaydırma çubuğu (Firefox + WebKit) */
+    scrollbar-width: thin;
+}
+
+.cy-board__loading {
+    padding: 3rem 1rem;
+    width: 100%;
+    text-align: center;
+    color: var(--cy-text-muted);
+}
+
+.cy-column {
+    /* flex: büyüme yok, küçülme yok, taban 300px.
+     * Küçülmeyi kapatmak ŞART: açık olsaydı sütun sayısı arttıkça
+     * hepsi ezilir ve kartlar okunamaz hâle gelirdi. */
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    overflow: hidden;
+}
+
+/* Sütun başlığı. Soldaki renk şeridi, veritabanındaki "accent"
+ * değerinden gelir; JavaScript onu --cy-column-accent özel
+ * değişkenine yazar. Böylece yeni sütun eklemek için CSS'e
+ * dokunmak gerekmez. */
+.cy-column__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .7rem .9rem;
+    background: var(--cy-surface);
+    border-bottom: 1px solid var(--cy-border);
+    border-left: 4px solid var(--cy-column-accent, var(--cy-brand-600));
+    font-weight: 600;
+    font-size: .92rem;
+}
+
+.cy-column__count {
+    min-width: 1.6rem;
+    padding: .1rem .45rem;
+    border-radius: 999px;
+    background: var(--cy-bg-alt);
+    color: var(--cy-text-muted);
+    font-size: .78rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Kartların durduğu bölge.
+ * min-height: Sütun boşken bile bırakma alanı kalsın diye.
+ * max-height + overflow: Uzun sütun sayfayı değil kendini kaydırsın. */
+.cy-column__list {
+    flex: 1;
+    min-height: 90px;
+    max-height: 62vh;
+    overflow-y: auto;
+    padding: .6rem;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    transition: background-color .15s ease;
+}
+
+/* Sürükleme sırasında imlecin üzerinde olduğu sütun vurgulanır.
+ * Kullanıcı "bırakırsam buraya düşer" bilgisini renkten alır. */
+.cy-column__list--active {
+    background-color: var(--cy-brand-100);
+}
+
+/* Boş sütun ipucu */
+.cy-column__empty {
+    padding: 1.1rem .5rem;
+    border: 2px dashed var(--cy-border);
+    border-radius: var(--cy-radius);
+    text-align: center;
+    font-size: .82rem;
+    color: var(--cy-text-muted);
+}
+
+.cy-column__add {
+    padding: .6rem;
+    border: 0;
+    border-top: 1px solid var(--cy-border);
+    background: transparent;
+    color: var(--cy-text-muted);
+    font-size: .85rem;
+    font-weight: 500;
+    text-align: left;
+    padding-left: .9rem;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.cy-column__add:hover {
+    background: var(--cy-brand-100);
+    color: var(--cy-brand-600);
+}
+
+
+/* ==================================================================
+ *  GÖREV KARTI
+ * ================================================================== */
+
+.cy-task {
+    position: relative;
+    display: grid;
+    /* tutamaç | gövde | butonlar */
+    grid-template-columns: auto 1fr auto;
+    gap: .5rem;
+    align-items: start;
+    padding: .6rem .65rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-left: 3px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+}
+
+.cy-task:hover {
+    box-shadow: 0 4px 10px rgba(15, 23, 42, .1);
+}
+
+/* Klavye odağı GÖRÜNÜR olmalıdır. outline'ı kaldırmak, klavye
+ * kullanıcısının sayfada nerede olduğunu kaybetmesi demektir. */
+.cy-task:focus-visible {
+    outline: 2px solid var(--cy-brand-600);
+    outline-offset: 2px;
+}
+
+/* Sol kenardaki öncelik şeridi */
+.cy-task--dusuk  { border-left-color: #94a3b8; }
+.cy-task--orta   { border-left-color: var(--cy-warning); }
+.cy-task--yuksek { border-left-color: var(--cy-danger); }
+
+/* --- Tutamaç ---
+ * touch-action: none → Tarayıcıya "bu alandaki parmak hareketini
+ * sen yorumlama, ben yöneteceğim" der. Bu satır OLMADAN dokunmatik
+ * cihazda sürükleme başlamaz; tarayıcı hareketi kaydırma sayıp
+ * pointercancel gönderir.
+ *
+ * Yalnızca tutamaca verilmesi bilinçlidir: kartın tamamına
+ * verilseydi telefonda sütunu parmakla kaydırmak imkânsız olurdu. */
+.cy-task__grip {
+    touch-action: none;
+    cursor: grab;
+    padding: .1rem .15rem;
+    color: var(--cy-text-muted);
+    font-size: 1rem;
+    line-height: 1.1;
+    user-select: none;
+}
+
+.cy-task__grip:active {
+    cursor: grabbing;
+}
+
+.cy-task__title {
+    margin: 0;
+    font-size: .9rem;
+    font-weight: 600;
+    line-height: 1.3;
+    /* Uzun ve boşluksuz metinler (URL gibi) kartı taşırmasın. */
+    overflow-wrap: anywhere;
+}
+
+/* "Tamamlandı" sütunundaki kartlar */
+.cy-task__title--done {
+    text-decoration: line-through;
+    color: var(--cy-text-muted);
+}
+
+.cy-task__desc {
+    margin: .3rem 0 0;
+    font-size: .8rem;
+    line-height: 1.35;
+    color: var(--cy-text-muted);
+    overflow-wrap: anywhere;
+
+    /* Uzun açıklamalar kartı devasa yapmasın: en fazla 3 satır
+     * göster, gerisini "…" ile kes. Tamamı düzenleme modalında
+     * görülebilir. */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.cy-task__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-top: .5rem;
+}
+
+/* --- Öncelik rozeti --- */
+.cy-priority {
+    padding: .12rem .45rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.cy-priority--dusuk  { background: #e2e8f0; color: #475569; }
+.cy-priority--orta   { background: rgba(217, 119, 6, .14);  color: #b45309; }
+.cy-priority--yuksek { background: rgba(220, 38, 38, .14);  color: var(--cy-danger); }
+
+/* --- Son teslim tarihi --- */
+.cy-due {
+    padding: .12rem .45rem;
+    border-radius: 999px;
+    background: var(--cy-bg-alt);
+    color: var(--cy-text-muted);
+    font-size: .7rem;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+/* Gecikmiş görev. Renk TEK BAŞINA yeterli bir işaret değildir
+ * (renk körlüğü); bu yüzden metnin başına ⚠ simgesi de eklenir. */
+.cy-due--overdue {
+    background: rgba(220, 38, 38, .14);
+    color: var(--cy-danger);
+}
+
+/* --- Kart butonları ---
+ * Normalde soluk dururlar; kartın üzerine gelince veya klavyeyle
+ * odaklanınca belirginleşirler. Böylece pano sakin görünür ama
+ * butonlar klavye kullanıcısından da gizlenmez. */
+.cy-task__actions {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    opacity: .35;
+    transition: opacity .15s ease;
+}
+
+.cy-task:hover .cy-task__actions,
+.cy-task:focus-within .cy-task__actions {
+    opacity: 1;
+}
+
+
+/* ==================================================================
+ *  SÜRÜKLEME DURUMLARI
+ * ================================================================== */
+
+/* Sürükleme sırasında metin seçilmesin ve imleç her yerde
+ * "taşıma" göstersin. */
+body.cy-dragging {
+    user-select: none;
+    cursor: grabbing;
+}
+
+/* Asıl kart: DOM'da gezerek yer tutucu görevi görür. */
+.cy-task--placeholder {
+    opacity: .35;
+    background: var(--cy-brand-100);
+    border-style: dashed;
+    box-shadow: none;
+}
+
+.cy-task--placeholder .cy-task__actions {
+    visibility: hidden;
+}
+
+/* Parmağın/imlecin altında yüzen kopya.
+ *
+ * pointer-events: none ŞARTTIR. Açık olsaydı elementFromPoint
+ * her zaman bu kopyayı bulur, altındaki sütunu asla göremezdik ve
+ * kart hiçbir yere bırakılamazdı. */
+.cy-task--ghost {
+    position: fixed;
+    z-index: 1080;
+    pointer-events: none;
+    margin: 0;
+    opacity: .95;
+    transform: rotate(1.5deg);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .25);
+    cursor: grabbing;
+}
+
+
+/* ==================================================================
+ *  GÖREV FORMU (Yeni Görev / Görevi Düzenle modalı)
+ * ------------------------------------------------------------------
+ *  Modal iki sütuna bölünür:
+ *    SOL  (.cy-task-form-grid__main) — Başlık, Açıklama (serbest metin)
+ *    SAĞ  (.cy-task-form-grid__meta) — Sütun, Öncelik, Son Teslim
+ *         (sınıflandırma alanları; soluk zemin kartına alınmıştır)
+ *
+ *  Bu ikili ayrım Trello/Linear gibi araçların görev detay
+ *  panellerindeki standart yerleşimdir: "ne" solda büyük yazılır,
+ *  "nerede / ne zaman / ne kadar önemli" sağda kompakt bir özet
+ *  panelinde durur. Dar ekranda (bkz. @media) panel içeriğin
+ *  ALTINA düşer, iki sütun üst üste biner.
+ * ================================================================== */
+
+/* --- Başlık kutusu ---
+ * Bu alan kartın ASIL adıdır; sıradan bir form alanından daha
+ * büyük ve kalın olması, formda en önemli girdi olduğunu anlatır. */
+.cy-title-input {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+/* --- İki sütunlu ana ızgara --- */
+.cy-task-form-grid {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.cy-task-form-grid__main {
+    flex: 1 1 60%;
+    min-width: 0;
+}
+
+/* Sağ panel: sabit genişlik. flex-shrink:0 olmadan modal daralınca
+ * panel içeriği (özellikle Sütun kutusundaki uzun metinler) sıkışıp
+ * taşabilirdi. */
+.cy-task-form-grid__meta {
+    flex: 0 0 280px;
+    padding: 1rem;
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+}
+
+/* Dar modalda (mobil, ya da modal-xl'in bile sığmadığı çok küçük
+ * ekranlarda) iki sütun yan yana durmaz; panel içeriğin ALTINA
+ * düşer ve sabit genişlik bırakılır (tam genişlik akar). */
+@media (max-width: 767.98px) {
+    .cy-task-form-grid {
+        flex-direction: column;
+    }
+
+    .cy-task-form-grid__meta {
+        flex-basis: auto;
+        width: 100%;
+    }
+}
+
+/* Sütun ve Öncelik kutuları, panoda zaten var olan renk diline
+ * bağlanır: --cy-select-accent değişkeni JavaScript tarafından
+ * seçime göre yazılır (bkz. board.js updateColumnAccent()), CSS
+ * yalnızca bu değişkeni okur. Kullanıcı "Yapılıyor" sütununu
+ * seçtiğinde kutunun kenarı panodaki aynı mavi şeride döner —
+ * form ile pano aynı görsel sözlüğü konuşur. */
+/* ÖZGÜLLÜK NOTU: cilginyazilim.css içindeki ".cy-app .form-select"
+ * kuralı İKİ sınıf seçicisi kullanır (0,0,2,0); tek sınıflı
+ * ".cy-accent-select" (0,0,1,0) bu kuralı YENEMEZ, kenarlık rengi
+ * görünmez kalırdı. Aynı örüntüyü (".cy-app" öneki) tekrarlayarak
+ * özgüllüğü eşitliyoruz; style.css marka dosyasından SONRA
+ * yüklendiği için eşit özgüllükte son kural kazanır. */
+.cy-app .cy-accent-select {
+    border-left: 4px solid var(--cy-select-accent, var(--cy-border));
+    transition: border-color .15s ease;
+}
+
+/* Odaklanınca ".form-select:focus" kuralı "border-color" (dört
+ * kenar) yazar ve sol kenar rengini silerdi; burada yalnızca sol
+ * kenarı yeniden belirterek rengin odak sırasında da kalmasını
+ * sağlıyoruz. */
+.cy-app .cy-accent-select:focus {
+    border-left-color: var(--cy-select-accent, var(--cy-brand-500));
+}
+
+/* --- Öncelik: renkli seçim kutuları (segmented control) ---------
+ * Üç <input type="radio"> GÖRSEL OLARAK gizlenir (display:none
+ * KULLANILMAZ — o zaman klavye ile odaklanılamaz ve ekran
+ * okuyucular elemanı hiç görmez). Bunun yerine boyutu 1px'e
+ * indirilip saydam yapılır; hem klavye Tab'ı hem screen reader
+ * radio'yu bulmaya devam eder.
+ *
+ * Her radio'nun hemen ardından gelen <label>, CSS'te "bitişik kardeş"
+ * seçiciyle (+) hedeflenir; bu yüzden HTML'de radio ile label'ı
+ * MUTLAKA yan yana, bu sırayla yazın. */
+.cy-priority-picker {
+    display: flex;
+    gap: .5rem;
+}
+
+/* Dar sağ panelde (280px) üç pil yan yana sıkışıp metni kırpardı;
+ * dikey dizilim her pile tam genişlik ve okunaklı bir dokunma/tıklama
+ * alanı verir. */
+.cy-priority-picker--stacked {
+    flex-direction: column;
+}
+
+.cy-priority-picker--stacked .cy-priority-picker__option {
+    text-align: left;
+    padding: .5rem .75rem;
+}
+
+.cy-priority-picker__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    /* margin:-1px ile birlikte bu üçü, elemanı sayfa akışından
+     * pratikte kaldırır ama DOM'da (ve erişilebilirlik ağacında)
+     * tutar — "sr-only" tekniğinin aynısı. */
+    margin: -1px;
+    overflow: hidden;
+}
+
+.cy-priority-picker__option {
+    flex: 1;
+    text-align: center;
+    padding: .5rem .5rem;
+    border: 1.5px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface);
+    color: var(--cy-text-muted);
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s ease;
+}
+
+.cy-priority-picker__option:hover {
+    border-color: var(--cy-brand-400);
+    color: var(--cy-text);
+}
+
+/* Klavye ile Tab'lanınca odak GÖRÜNÜR olmalıdır (gizli input'un
+ * kendisi görünmez ama bitişik etiketi odak halkasını taşıyabilir). */
+.cy-priority-picker__input:focus-visible + .cy-priority-picker__option {
+    outline: 2px solid var(--cy-brand-600);
+    outline-offset: 2px;
+}
+
+/* Seçili renkler, kartların sol kenarındaki öncelik şeridiyle
+ * BİREBİR AYNIDIR (bkz. .cy-priority--dusuk/orta/yuksek yukarıda);
+ * tek bir yerde değişse diğerinin unutulmaması için aynı ham
+ * değerler burada da tekrar edilir — CSS değişkenleri renk
+ * paylaşımını burada kolaylaştırmaz çünkü rgba() literalleri
+ * doğrudan kullanılmıştır. */
+.cy-priority-picker__input:checked + .cy-priority-picker__option--dusuk {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.cy-priority-picker__input:checked + .cy-priority-picker__option--orta {
+    background: rgba(217, 119, 6, .14);
+    border-color: var(--cy-warning);
+    color: #b45309;
+}
+
+.cy-priority-picker__input:checked + .cy-priority-picker__option--yuksek {
+    background: rgba(220, 38, 38, .14);
+    border-color: var(--cy-danger);
+    color: var(--cy-danger);
+}
+
+/* Doğrulama hatası: kapsayıcıya (#priority) is-invalid eklenince
+ * tüm kutuların kenarı kırmızıya döner. */
+.cy-priority-picker.is-invalid .cy-priority-picker__option {
+    border-color: var(--cy-danger);
+}
+
+/* Textarea'nın yeniden boyutlandırma tutamacı yalnızca DİKEYDE
+ * çalışsın; yatay serbest bırakılırsa modal genişliğini bozabilir. */
+#description {
+    resize: vertical;
+}
+
+
+/* ==================================================================
+ *  KÜÇÜK PARÇALAR
+ * ================================================================== */
+
+.cy-search {
+    width: 220px;
+    max-width: 100%;
+}
+
+/* Silme onay modalındaki uyarı ikonu */
+.delete-icon {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, .12);
+    color: var(--cy-danger);
+    font-size: 1.8rem;
+}
+
+/* Alt bilgideki klavye tuşu görünümü */
+kbd {
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    background: var(--cy-bg-alt);
+    border: 1px solid var(--cy-border);
+    color: var(--cy-text);
+    font-size: .75rem;
+}
+
+
+/* ==================================================================
+ *  MOBİL
+ * ================================================================== */
+@media (max-width: 575.98px) {
+    /* Telefonda 300px sütun ekranın tamamını kaplar; biraz
+     * daraltıp yanındaki sütunun kenarını göstermek, panonun
+     * yatayda kaydığını kullanıcıya sezdirir. */
+    .cy-column {
+        flex-basis: 84vw;
+    }
+
+    .cy-search {
+        width: 100%;
+    }
+
+    /* Dokunmatikte butonlar her zaman görünsün: "üzerine gelme"
+     * diye bir kavram yoktur. */
+    .cy-task__actions {
+        opacity: 1;
+    }
+}
+
+
+/* ==================================================================
+ *  HAREKET AZALTMA TERCİHİ
+ * ------------------------------------------------------------------
+ *  Bazı kullanıcılar için hareketli arayüzler baş dönmesi ve mide
+ *  bulantısı yapar; işletim sisteminde "hareketi azalt" ayarını
+ *  açarlar. Bu tercihi görmezden gelmek erişilebilirlik hatasıdır.
+ * ================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .cy-task,
+    .cy-column__list,
+    .cy-column__add,
+    .cy-task__actions {
+        transition: none;
+    }
+
+    .cy-task--ghost {
+        transform: none;
+    }
+}

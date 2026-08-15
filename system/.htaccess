@@ -1,0 +1,38 @@
+# =====================================================================
+#  system/ klasörü – DOĞRUDAN ERİŞİM KORUMASI
+# ---------------------------------------------------------------------
+#  SORUN:
+#  Bu klasördeki dosyalar web kökünün içindedir; yani tarayıcıdan
+#  doğrudan çağrılabilirler:
+#      http://site.com/todo-drag-drop/system/config.php
+#
+#  config.php çağrıldığında ekrana bir şey basmaz — ama sessizce bir
+#  VERİTABANI BAĞLANTISI AÇAR. Bu adresi saniyede yüzlerce kez isteyen
+#  biri, uygulamanın hiçbir sayfasını kullanmadan veritabanını
+#  bağlantı sınırına dayandırabilir. Ayrıca bir yapılandırma hatası
+#  (PHP'nin devre dışı kalması gibi) durumunda sunucu, dosyanın
+#  İÇERİĞİNİ düz metin olarak servis eder ve şifreler görünür.
+#
+#  ÇÖZÜM:
+#  Yalnızca ajax.php dışarıdan çağrılabilir olsun. Diğerleri PHP'nin
+#  require ile yüklemesine açık kalır (dosya sistemi erişimi bu
+#  kuraldan etkilenmez), ama HTTP üzerinden istenemez.
+#
+#  NOT: Asıl doğru çözüm, system/ klasörünü web kökünün DIŞINA
+#  taşımaktır. Bu örnekte "klasörü kopyala, çalışsın" kolaylığı
+#  tercih edildiği için koruma .htaccess ile sağlanıyor.
+# =====================================================================
+
+# --- Apache 2.4 ---
+<FilesMatch "\.(php|sql|md)$">
+    Require all denied
+</FilesMatch>
+
+# ajax.php TEK İSTİSNADIR: arayüzün konuştuğu uç nokta budur.
+<Files "ajax.php">
+    Require all granted
+</Files>
+
+# Dizin listelemeyi kapat: kural bir şekilde atlanırsa bile
+# klasördeki dosyaların ADLARI görünmesin.
+Options -Indexes
