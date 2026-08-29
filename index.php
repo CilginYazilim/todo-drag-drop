@@ -38,9 +38,26 @@ $csrfToken = csrf_token();
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--
+        viewport-fit=cover : Çentikli (notch) telefonlarda sayfa ekranın
+        tamamına yayılır; güvenli alan boşlukları CSS'teki env(safe-area-*)
+        değerleriyle ayrıca verilir (bkz. style.css MOBİL bölümü).
+
+        maximum-scale / user-scalable BİLEREK YAZILMADI: yakınlaştırmayı
+        kapatmak, az gören kullanıcılar için sayfayı kullanılamaz hâle
+        getiren bir erişilebilirlik hatasıdır.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="author" content="Çılgın Yazılım - cilginyazilim.com">
     <meta name="description" content="PHP, MySQL ve saf JavaScript ile geliştirilmiş sürükle-bırak görev panosu (Kanban). Dokunmatik destekli, klavyeyle de kullanılabilir.">
+
+    <!--
+        theme-color : Mobil tarayıcının adres çubuğunu marka rengine boyar.
+        Açık/koyu tema için ayrı ayrı verilir; tek değer yazmak koyu temada
+        adres çubuğunu sayfadan kopuk gösterirdi.
+    -->
+    <meta name="theme-color" content="#0b5cb5" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#061321" media="(prefers-color-scheme: dark)">
 
     <!--
         CSRF anahtarını meta etiketine koyuyoruz.
@@ -80,10 +97,22 @@ $csrfToken = csrf_token();
         <div class="cy-card">
 
             <!-- ---------- Kart Başlığı ---------- -->
+            <!--
+                BAŞLIK YERLEŞİMİ (.cy-head)
+                --------------------------
+                Geniş ekranda tek satır: solda marka, sağda araçlar.
+                Telefonda ise CSS ızgarası (grid) devreye girer ve
+                sıralama değişir: marka üstte, ARAMA tam genişlikte,
+                sayaç + "Yeni Görev" altta yan yana. Bootstrap'in
+                flex-wrap'ı bu düzeni veremezdi çünkü sarma sırasında
+                öğelerin genişliğini denetleyemiyorduk — arama kutusu
+                ya butonun yanında eziliyor ya da tek başına satıra
+                düşüp sayacı yalnız bırakıyordu.
+            -->
             <div class="cy-card__header">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="cy-head">
 
-                    <a class="cy-brand" href="https://cilginyazilim.com" target="_blank" rel="noopener">
+                    <a class="cy-brand cy-head__brand" href="https://cilginyazilim.com" target="_blank" rel="noopener">
                         <span class="cy-brand__mark">
                             <img src="assets/images/logo.png" alt="Çılgın Yazılım logosu">
                         </span>
@@ -95,23 +124,27 @@ $csrfToken = csrf_token();
                         </div>
                     </a>
 
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="cy-badge cy-badge--glass">
-                            Toplam <strong id="total_tasks">0</strong> görev
-                        </span>
+                    <!--
+                        type="search" : Mobil klavyede "ara" tuşu çıkar ve
+                        tarayıcı alanın içine temizleme (×) düğmesi koyar.
 
-                        <!--
-                            type="search" : Mobil klavyede "ara" tuşu çıkar ve
-                            tarayıcı alanın içine temizleme (×) düğmesi koyar.
-                        -->
-                        <input type="search" id="search_input" class="form-control cy-search"
-                               placeholder="Görevlerde ara…" aria-label="Görevlerde ara"
-                               maxlength="<?= (int) SEARCH_MAX ?>">
+                        enterkeyhint="search" : Sanal klavyenin Enter tuşunun
+                        üzerinde "Ara" yazar. Küçük ayrıntı ama telefonda
+                        kullanıcıya "bu alan ne işe yarıyor" sorusunu
+                        sordurmaz.
+                    -->
+                    <input type="search" id="search_input" class="form-control cy-search cy-head__search"
+                           placeholder="Görevlerde ara…" aria-label="Görevlerde ara"
+                           enterkeyhint="search" autocomplete="off"
+                           maxlength="<?= (int) SEARCH_MAX ?>">
 
-                        <button type="button" id="add_button" class="btn cy-btn cy-btn--onbrand">
-                            <span aria-hidden="true">＋</span> Yeni Görev
-                        </button>
-                    </div>
+                    <span class="cy-badge cy-badge--glass cy-head__count">
+                        Toplam <strong id="total_tasks">0</strong> görev
+                    </span>
+
+                    <button type="button" id="add_button" class="btn cy-btn cy-btn--onbrand cy-head__add">
+                        <span aria-hidden="true">＋</span> Yeni Görev
+                    </button>
                 </div>
             </div>
 
@@ -126,18 +159,43 @@ $csrfToken = csrf_token();
                     veya eklendiğinde değişikliği kullanıcının işini
                     bölmeden okur.
                 -->
+                <!--
+                    Arama hiçbir sonuç bulmadığında görünür. Panonun
+                    İÇİNDE değil ÜSTÜNDE durur: pano her çizimde
+                    boşaltıldığı (empty()) için içeride olsaydı
+                    silinirdi — ve yatay kayan bir kutuda uyarı
+                    metni ekranın dışında kalabilirdi.
+                -->
+                <div id="board_notice" class="cy-board-notice d-none" role="status">
+                    Aramanıza uyan görev bulunamadı. Farklı bir kelime deneyin
+                    ya da arama kutusunu temizleyin.
+                </div>
+
                 <div id="board" class="cy-board" aria-live="polite">
                     <div class="cy-board__loading">Pano yükleniyor…</div>
                 </div>
             </div>
 
-            <div class="cy-card__footer d-flex flex-wrap justify-content-between gap-2">
-                <span>
+            <!--
+                ALT BİLGİ: Kullanım ipucu GİRDİ TÜRÜNE GÖRE değişir.
+                Telefonda "Ctrl + ok tuşları" yazmak yanlış bilgi
+                vermektir; orada tutamaçtan sürükleme anlatılır.
+                Hangisinin görüneceğine CSS karar verir (bkz.
+                .cy-hint--pointer / .cy-hint--touch) — JavaScript'e
+                gerek yok, cihaz sorgusu (hover: hover) bu ayrımı
+                zaten yapabiliyor.
+            -->
+            <div class="cy-card__footer cy-card__footer--hints">
+                <span class="cy-hint cy-hint--pointer">
                     Kartı sürükleyin ya da odaklanıp
                     <kbd>Ctrl</kbd> + <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd>
                     tuşlarını kullanın.
                 </span>
-                <span>PHP <?= e(PHP_VERSION) ?></span>
+                <span class="cy-hint cy-hint--touch">
+                    Kartı taşımak için soldaki <span aria-hidden="true">⠿</span> tutamacına
+                    basılı tutup sürükleyin.
+                </span>
+                <span class="cy-hint__version">PHP <?= e(PHP_VERSION) ?></span>
             </div>
         </div>
 
@@ -146,10 +204,12 @@ $csrfToken = csrf_token();
                 Bu açık kaynak örnek, <a href="https://cilginyazilim.com" target="_blank" rel="noopener">cilginyazilim.com</a>
                 tarafından geliştirilmiştir. MIT lisanslıdır.
             </p>
-            <p class="mb-0">
-                Kaynak kod:
+            <p class="mb-0 cy-footer-note__links">
+                <a href="https://cilginyazilim.com/kutuphane"
+                   target="_blank" rel="noopener">Örnek kodlar &amp; kütüphane</a>
+                <span class="cy-footer-note__sep" aria-hidden="true">&middot;</span>
                 <a href="https://github.com/CilginYazilim/todo-drag-drop"
-                   target="_blank" rel="noopener">github.com/CilginYazilim/todo-drag-drop</a>
+                   target="_blank" rel="noopener">Kaynak kod (GitHub)</a>
             </p>
         </div>
     </div>
@@ -167,7 +227,15 @@ $csrfToken = csrf_token();
             (Sütun/Son Teslim/Öncelik) sıkışıp alt alta düşüyordu. modal-xl
             (1140px) bu üç alanın TEK satırda, nefes alarak durmasını sağlar.
         -->
-        <div class="modal-dialog modal-dialog-centered modal-xl">
+        <!--
+            modal-fullscreen-sm-down : Telefonda (576px altı) modal, ekranın
+            TAMAMINI kaplar. Küçük ekranda ortalanmış, kenarları boşluklu bir
+            kutu iki sorunu birden yaratıyordu: form alanları daha da daralıyor
+            ve klavye açılınca modal yukarı itilip başlığı ekran dışında
+            kalıyordu. Tam ekran modal her ikisini de çözer ve mobil
+            uygulamaların alışılmış davranışıdır.
+        -->
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">
             <!-- novalidate : Tarayıcının kendi uyarı balonlarını kapatır,
                  biz kendi hata mesajlarımızı gösteriyoruz. -->
             <form method="post" id="task_form" novalidate>

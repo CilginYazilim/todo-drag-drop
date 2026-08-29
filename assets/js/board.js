@@ -62,6 +62,13 @@ var CyBoard = (function ($) {
     var SCROLL_EDGE  = 60;
     var SCROLL_SPEED = 12;
 
+    /* DOKUNMATİK: Kopyayı (ghost) parmağın bu kadar YUKARISINDA tut.
+     * Fare imleci birkaç piksellik bir ok olduğu için kartı kapatmaz;
+     * parmak ise kartın tamamını örter — kullanıcı ne taşıdığını ve
+     * nereye bıraktığını göremez. Kartı parmağın üstüne almak, mobil
+     * arayüzlerde sürükleme geri bildiriminin standart çözümüdür. */
+    var TOUCH_GHOST_LIFT = 28;
+
 
     /* =================================================================
      *  YARDIMCILAR
@@ -93,6 +100,25 @@ var CyBoard = (function ($) {
         // Kapanınca DOM'dan kaldır (bellek sızıntısını önler).
         $toast.on('hidden.bs.toast', function () { $toast.remove(); });
         toast.show();
+    }
+
+    /**
+     * Kısa bir titreşim verir (yalnızca destekleyen cihazlarda).
+     *
+     * NEDEN? Dokunmatikte sürüklemenin BAŞLADIĞI an görsel olarak
+     * belirsizdir: parmak zaten kartın üzerindedir. 10 ms'lik bir
+     * titreşim "tuttum, artık taşıyabilirsin" mesajını fiziksel
+     * olarak verir. Süre bilinçli kısa: uzun titreşimler rahatsız
+     * eder ve pili tüketir.
+     *
+     * navigator.vibrate masaüstünde ve iOS Safari'de yoktur; bu
+     * yüzden çağrı KOŞULA bağlanır — özellik yoksa sessizce atlanır
+     * ve hiçbir şey bozulmaz ("progressive enhancement").
+     */
+    function buzz() {
+        if (navigator.vibrate) {
+            navigator.vibrate(10);
+        }
     }
 
     /** Sunucuya POST isteği atar; CSRF anahtarını otomatik ekler. */
@@ -272,6 +298,8 @@ var CyBoard = (function ($) {
         var $board = $('#board').empty();
 
         if (board.columns.length === 0) {
+            $('#board_notice').addClass('d-none');
+
             $board.append($('<div>', {
                 'class': 'cy-board__loading',
                 text: 'Pano boş. Önce cy_todo.sql dosyasını içe aktarın.'
@@ -282,6 +310,16 @@ var CyBoard = (function ($) {
         $.each(board.columns, function (_, column) {
             $board.append(renderColumn(column));
         });
+
+        /* ARAMA SONUÇ YOK UYARISI.
+         * Eskiden arama hiçbir şey bulmadığında pano yalnızca boş
+         * sütunlar gösteriyordu; kullanıcı bunu "görevlerim silindi"
+         * diye okuyabiliyordu. Özellikle telefonda, sütunları
+         * kaydırarak dolaşmadan durumu anlamak imkânsızdı. */
+        $('#board_notice').toggleClass(
+            'd-none',
+            !($('#search_input').val() && board.total === 0)
+        );
 
         // Formdaki sütun listesini de tazele.
         var $select = $('#column_id').empty();
@@ -359,6 +397,17 @@ var CyBoard = (function ($) {
             drag.ghost.remove();
         }
 
+        // Yakalamayı bırak (bkz. onPointerDown'daki setPointerCapture).
+        // Bırakılmazsa kart, sürükleme bittikten sonra da işaretleyici
+        // olaylarını tekeline almaya devam eder.
+        if (drag.pointerId !== null && drag.pointerId !== undefined) {
+            try {
+                drag.card.releasePointerCapture(drag.pointerId);
+            } catch (error) {
+                /* Zaten serbest bırakılmış; yapılacak bir şey yok. */
+            }
+        }
+
         $(drag.card).removeClass('cy-task--placeholder');
         $('body').removeClass('cy-dragging');
         $('.cy-column__list').removeClass('cy-column__list--active');
@@ -398,6 +447,9 @@ var CyBoard = (function ($) {
             card:      card,
             ghost:     null,
             started:   false,
+            // Parmakla mı sürükleniyor? Kopyanın konumu ve eşik
+            // değeri buna göre değişir (bkz. TOUCH_GHOST_LIFT).
+            isTouch:   event.pointerType === 'touch',
             startX:    event.clientX,
             startY:    event.clientY,
             // İmlecin kartın SOL ÜST köşesine olan uzaklığı. Bunu
@@ -411,6 +463,24 @@ var CyBoard = (function ($) {
             originList:  card.parentNode,
             originNext:  card.nextElementSibling
         };
+
+        /* POINTER CAPTURE: Bu işaretleyicinin sonraki tüm olayları,
+         * parmak/imleç nereye giderse gitsin, karta yönlendirilir.
+         *
+         * NEDEN GEREKLİ? Dokunmatikte parmak hızlıca kartın dışına
+         * çıktığında tarayıcı "pointercancel" gönderip sürüklemeyi
+         * kesiyordu; kart yarı yolda başladığı yere dönüyordu.
+         * Yakalama (capture) bu kesilmeyi tamamen ortadan kaldırır.
+         *
+         * try/catch: İşaretleyici o an serbest bırakılmışsa çağrı
+         * NotFoundError atar. Sürüklemenin geri kalanı buna bağlı
+         * olmadığı için hatayı yutmak doğru davranıştır. */
+        try {
+            card.setPointerCapture(event.pointerId);
+            drag.pointerId = event.pointerId;
+        } catch (error) {
+            drag.pointerId = null;
+        }
 
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
@@ -460,11 +530,23 @@ var CyBoard = (function ($) {
         // Asıl kart yer tutucuya dönüşür: yerini korur ama soluklaşır.
         drag.card.classList.add('cy-task--placeholder');
         document.body.classList.add('cy-dragging');
+
+        // Parmakla sürüklemenin başladığını fiziksel olarak bildir.
+        if (drag.isTouch) {
+            buzz();
+        }
     }
 
     function moveGhost(x, y) {
+        /* DOKUNMATİKTE KOPYA PARMAĞIN ÜSTÜNDE DURUR.
+         * Parmak kartın tamamını örttüğü için, kopyayı imlecin tam
+         * altına koymak kullanıcıyı kör bırakıyordu: ne taşıdığını
+         * da nereye bıraktığını da göremiyordu. Kartı bir parmak
+         * boyu yukarı almak ikisini de görünür kılar. */
+        var lift = drag.isTouch ? TOUCH_GHOST_LIFT : 0;
+
         drag.ghost.style.left = (x - drag.offsetX) + 'px';
-        drag.ghost.style.top  = (y - drag.offsetY) + 'px';
+        drag.ghost.style.top  = (y - drag.offsetY - lift) + 'px';
     }
 
     /**
@@ -803,6 +885,20 @@ var CyBoard = (function ($) {
 
         $('#add_button').on('click', function () { openAddModal(null); });
 
+        /* Modal açılınca başlık alanına odaklan — ama YALNIZCA
+         * fare/klavye cihazlarında.
+         *
+         * Dokunmatikte otomatik odak, sanal klavyeyi kullanıcı
+         * istemeden açar: ekranın yarısı kaplanır ve kullanıcı
+         * formun geri kalanını görmeden yazmaya zorlanmış hisseder.
+         * matchMedia('(hover: hover)') tam olarak "üzerine
+         * gelinebilen bir işaretleyici var mı" sorusunu sorar. */
+        $('#taskModal').on('shown.bs.modal', function () {
+            if (window.matchMedia('(hover: hover)').matches) {
+                $('#title').trigger('focus');
+            }
+        });
+
         /* --- Form gönderimi --- */
         $('#task_form').on('submit', function (event) {
             // Sayfanın yenilenmesini engelle; işi AJAX yapacak.
@@ -859,6 +955,28 @@ var CyBoard = (function ($) {
         $('#search_input').on('input', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(function () { loadBoard(); }, 300);
+        });
+
+        /* Arama kutusunda Enter → beklemeden ara ve KLAVYEYİ KAPAT.
+         * Telefonda sanal klavye ekranın yarısını kaplar; kullanıcı
+         * aramayı bitirdiğinde sonucu görebilmek için klavyeyi elle
+         * kapatmak zorunda kalıyordu. blur() bunu kendiliğinden yapar.
+         *
+         * Escape → aramayı temizle. Masaüstünde arama kutularının
+         * yerleşik davranışıdır; type="search" bunu bazı tarayıcılarda
+         * kendisi yapar ama hepsi yapmaz ve hiçbiri panoyu yenilemez. */
+        $('#search_input').on('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                clearTimeout(searchTimer);
+                loadBoard();
+                this.blur();
+            } else if (event.key === 'Escape' && this.value !== '') {
+                event.preventDefault();
+                this.value = '';
+                clearTimeout(searchTimer);
+                loadBoard();
+            }
         });
     }
 

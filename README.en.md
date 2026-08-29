@@ -41,6 +41,7 @@ Mouse · Touch · Keyboard · CSRF-protected AJAX
 | [Installation](#installation) | [API endpoints](#api-endpoints) |
 | [What each file does](#what-each-file-does) | [Security](#security) |
 | [Database](#database) | [Customisation](#customisation) |
+| [Mobile support](#mobile-support) | |
 
 ---
 
@@ -50,6 +51,7 @@ Task cards you can drag between columns. Wherever you drop a card, **the positio
 
 - **Drag & drop** — reorder within a column or move a card to another column
 - **Three input methods** — mouse, touch screen and keyboard all do the same job
+- **Fully usable on a phone** — 44px touch targets, columns that snap into place, a full-screen form ([details](#mobile-support))
 - **Priority and due dates** — low/medium/high colour coding, overdue cards are flagged
 - **Full CRUD** — quick add per column, edit in a modal, delete with confirmation
 - **Instant search** — across titles and descriptions, debounced by 300 ms
@@ -195,13 +197,15 @@ pointerup   → write the new order to the server
 
 **How is the insertion point found?** We look at the vertical **midpoint** of every card in the column. If the pointer is above a card's midpoint, the card goes before it; otherwise after it. This simple rule works correctly even when cards have different heights.
 
-### Three critical details
+### Five critical details
 
 | Detail | Why |
 |--------|-----|
 | `pointer-events: none` (on the ghost) | With it enabled, `elementFromPoint` would always find the ghost, never the column underneath — and the card could not be dropped anywhere. |
 | `touch-action: none` (on the grip only) | Without this line, dragging never starts on touch devices. It is applied **only** to the grip: on the whole card it would make scrolling the column with a finger impossible. |
 | Auto-scroll at the edges | Normal scrolling does not work mid-drag. Without this you cannot move a card below the fold of a column taller than the screen. |
+| `setPointerCapture()` | When a finger moved quickly outside the card, the browser fired `pointercancel` and killed the drag — the card snapped back mid-journey. Capture routes every event from that pointer to the card and removes the interruption entirely. |
+| Lifting the ghost off the finger | A mouse cursor is a few pixels of arrow and hides nothing; **a finger covers the whole card.** Placing the ghost directly under the pointer left mobile users blind to both what they were carrying and where they were dropping it. `TOUCH_GHOST_LIFT` applies only when `pointerType === 'touch'`. |
 
 ### Keyboard access
 
@@ -214,6 +218,63 @@ Drag & drop is a mouse/finger-only feature. Not writing a keyboard alternative m
 | <kbd>Esc</kbd> | Cancel the drag in progress |
 
 `Ctrl` is required on purpose: with bare arrow keys, a keyboard user simply navigating between cards would rearrange the board by accident.
+
+---
+
+## Mobile support
+
+A Kanban board is **wide by nature**; a phone screen is narrow. That tension is not something you resolve by sticking a "responsive" label on the page — making the board usable on a phone means the layout has to behave differently in several specific places.
+
+### Ask about the input, not the width
+
+Most of the mobile fixes hang off **`@media (hover: none)`**, not a width breakpoint.
+
+```css
+@media (hover: none) { … }   /* "there is no pointer that can hover" */
+```
+
+Width lies: a shrunken desktop window still has a keyboard and a mouse; a wide tablet has neither. The real condition behind "enlarge the touch targets" and "stop hiding buttons until hover" is not *is the screen narrow* but **is this being used with a finger**.
+
+The same query picks the footer hint: pointer devices are told about <kbd>Ctrl</kbd> + arrows, touch devices about the grip. Printing a keyboard shortcut on a phone is simply false information.
+
+### Touch targets
+
+| Element | Desktop | Touch |
+|---------|---------|-------|
+| Edit / delete icons | 34 px | **44 px** |
+| Drag grip | a small piece of text | **44 px wide, full card height** |
+
+44 px is the floor WCAG 2.5.8 and Apple's HIG agree on. It matters doubly for the grip: it is **the only place a drag can start**, so missing it means the feature does not work at all.
+
+But enlarging the icons created a new problem — the desktop arrangement of two stacked icons down the card's right edge became an 88 px column, and cards looked enormous. The fix was to move the buttons onto **the same row as the badges**, in the card's bottom-right corner: priority and due-date badges are left-aligned, so the right of that row was already empty.
+
+### Columns that snap
+
+```css
+.cy-board  { scroll-snap-type: x mandatory; }
+.cy-column { scroll-snap-align: start; scroll-snap-stop: always; }
+```
+
+Let go and the board aligns to the nearest column instead of resting anywhere. Stopping halfway between two columns made cards hard to read on a phone.
+
+> **Snapping is switched off mid-drag** (`body.cy-dragging .cy-board`). Left on, every `scrollLeft` written by the auto-scroll would be snapped straight back to the nearest column, and the board would judder while you tried to carry a card into the next one.
+
+### The rest
+
+| Problem | Fix |
+|---------|-----|
+| Reaching the end of the board handed the gesture to the page and triggered pull-to-refresh | `overscroll-behavior: contain` — scrolling stays inside the box |
+| Scrolling a long column pushed its header off screen; you lost track of which column you were in | `position: sticky` header. This required changing `overflow: hidden` to `clip` on `.cy-column`: `hidden` makes the box a scroll container, which silently kills stickiness |
+| The modal stayed narrow on a phone, and the virtual keyboard pushed its title off screen | `modal-fullscreen-sm-down` |
+| The full-screen modal left a grey strip at the bottom | `height: 100%` on `.modal-dialog` does not flow through the intervening `<form>`; it is now set on the form too |
+| Title and description filled only the left half of the modal | `align-items: flex-start` changes meaning in a column layout and shrank children to their content → `stretch` |
+| Tapping the title field made iOS zoom in and stay there | Font size `1rem` (=16px); Safari auto-zooms fields below 16px |
+| An empty search result showed empty columns, which reads as "my tasks are gone" | An explicit notice above the board |
+| The virtual keyboard kept covering half the screen after searching | <kbd>Enter</kbd> → search and `blur()`; <kbd>Esc</kbd> → clear |
+| The moment a drag started was visually ambiguous under a finger | `navigator.vibrate(10)` — 10 ms on devices that support it, skipped silently elsewhere |
+| On notched phones the footer sat under the home indicator | `viewport-fit=cover` + `env(safe-area-inset-*)`, wrapped in `max()` |
+
+> **Deliberately not done:** `maximum-scale=1` / `user-scalable=no`. Disabling zoom is an accessibility failure that makes the page unusable for people with low vision — far too high a price for a tidier-looking mobile layout.
 
 ---
 
@@ -371,6 +432,8 @@ To contribute, fork the repository and open a pull request.
 **[Çılgın Yazılım](https://cilginyazilim.com)**
 
 Open source, educational PHP examples
+
+**[Code examples &amp; library](https://cilginyazilim.com/kutuphane)** · [This project's page](https://cilginyazilim.com/kutuphane/surukle-birak-gorev-panosu)
 
 [cilginyazilim.com](https://cilginyazilim.com) · [github.com/CilginYazilim](https://github.com/CilginYazilim)
 

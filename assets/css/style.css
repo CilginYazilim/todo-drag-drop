@@ -18,6 +18,75 @@
 
 
 /* ==================================================================
+ *  KART BAŞLIĞI YERLEŞİMİ (.cy-head)
+ * ------------------------------------------------------------------
+ *  Geniş ekranda TEK SATIR: marka solda, araçlar (arama, sayaç,
+ *  "Yeni Görev") sağda. Telefonda ise ızgara üç satıra bölünür ve
+ *  arama kutusu TAM GENİŞLİK alır.
+ *
+ *  NEDEN GRID, BOOTSTRAP'İN flex-wrap'ı DEĞİL?
+ *  flex-wrap ile öğeler "sığdıkları kadar" sarılır; hangi öğenin
+ *  hangi satıra düşeceğini söyleyemezsiniz. Sonuç, dar ekranda
+ *  arama kutusunun butonun yanında ezilmesi ya da tek başına satıra
+ *  düşüp sayacı ortada bırakmasıydı. Grid'de her öğeye hangi
+ *  satır/sütunda duracağını doğrudan söyleriz.
+ * ================================================================== */
+.cy-head {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: .75rem;
+}
+
+/* Marka bloğu daralabilmeli: min-width:0 olmadan uzun alt başlık
+ * ızgara sütununu şişirir ve araçları ekran dışına iter. Grid ve
+ * flex öğelerinin varsayılan min-width'i "auto"dur (= içeriğinden
+ * küçülemez); bunu sıfırlamak taşmayı önleyen standart çözümdür. */
+.cy-head__brand {
+    min-width: 0;
+}
+
+.cy-head__search {
+    justify-self: end;
+}
+
+
+/* ==================================================================
+ *  ALT BİLGİ İPUÇLARI
+ * ------------------------------------------------------------------
+ *  Aynı işi anlatan iki cümle var; hangisinin görüneceğini CİHAZ
+ *  belirler. Telefonda "Ctrl + ok tuşları" yazmak yanlış bilgidir.
+ *
+ *  Ayrım "(hover: hover)" ile yapılır — ekran GENİŞLİĞİ ile değil.
+ *  Genişlik yanıltıcıdır: küçültülmüş bir masaüstü penceresinin de
+ *  klavyesi vardır, geniş bir tabletin ise yoktur. "hover: hover"
+ *  doğrudan "bu cihazda üzerine gelinebilen bir işaretleyici var mı"
+ *  sorusunu sorar ki aradığımız ayrım tam olarak budur.
+ * ================================================================== */
+.cy-card__footer--hints {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+/* Varsayılan: dokunmatik metni gizli, işaretleyici metni açık.
+ * (Sıralama önemli: aşağıdaki sorgular bu varsayılanı ezer.) */
+.cy-hint--touch   { display: none; }
+.cy-hint--pointer { display: inline; }
+
+@media (hover: none) {
+    .cy-hint--pointer { display: none; }
+    .cy-hint--touch   { display: inline; }
+}
+
+.cy-footer-note__sep {
+    margin: 0 .4rem;
+    opacity: .5;
+}
+
+
+/* ==================================================================
  *  GİZLİ YERLEŞİM HATASI DÜZELTMESİ: form-sarmalı modal genişliği
  * ------------------------------------------------------------------
  *  "Görev Ekle/Düzenle" modalında .modal-content, bir <form> etiketi
@@ -41,6 +110,18 @@
  * ================================================================== */
 .cy-modal .modal-dialog > form {
     width: 100%;
+}
+
+/* AYNI HATANIN YÜKSEKLİK HÂLİ (tam ekran modalda).
+ * "modal-fullscreen-sm-down" .modal-dialog'a height:100% verir ama
+ * bu yükseklik araya giren <form>'a AKMAZ; form içeriği kadar
+ * yüksek kalır. Sonuç: telefonda modal ekranın tamamını kaplaması
+ * gerekirken altta gri bir şerit bırakıyordu. */
+@media (max-width: 575.98px) {
+    .cy-modal .modal-dialog-scrollable > form,
+    .cy-modal .modal-fullscreen-sm-down > form {
+        height: 100%;
+    }
 }
 
 /* Pano gövdesinde iç boşluğu azaltıyoruz: sütunların kendi
@@ -67,6 +148,14 @@
 
     /* İnce kaydırma çubuğu (Firefox + WebKit) */
     scrollbar-width: thin;
+
+    /* KAYDIRMA ZİNCİRİNİ KES (scroll chaining).
+     * Bu satır olmadan, pano yatayda sonuna geldiğinde parmak
+     * hareketi ARKADAKİ sayfaya devredilir; mobil tarayıcılarda bu
+     * "sayfayı aşağı çekince yenile" hareketini tetikler ve
+     * kullanıcı sütunlar arasında gezinirken sayfayı kazara
+     * yeniler. "contain" kaydırmayı bu kutunun içinde tutar. */
+    overscroll-behavior-x: contain;
 }
 
 .cy-board__loading {
@@ -74,6 +163,18 @@
     width: 100%;
     text-align: center;
     color: var(--cy-text-muted);
+}
+
+/* Arama sonuç bulamadığında panonun üstünde beliren şerit. */
+.cy-board-notice {
+    margin-bottom: .85rem;
+    padding: .7rem .9rem;
+    border: 1px dashed var(--cy-border);
+    border-left: 4px solid var(--cy-warning);
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface-soft);
+    color: var(--cy-text-muted);
+    font-size: .85rem;
 }
 
 .cy-column {
@@ -106,6 +207,13 @@
     font-size: .92rem;
 }
 
+/* Uzun sütun başlıkları taşmasın; sayaç her zaman görünür kalsın. */
+.cy-column__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .cy-column__count {
     min-width: 1.6rem;
     padding: .1rem .45rem;
@@ -130,6 +238,15 @@
     flex-direction: column;
     gap: .55rem;
     transition: background-color .15s ease;
+
+    /* Sütunun dikey kaydırması bittiğinde hareketin panoya/sayfaya
+     * devredilmemesi için (yukarıdaki .cy-board notunun aynısı). */
+    overscroll-behavior-y: contain;
+
+    /* iOS'ta ivmeli (momentum) kaydırma. Bu satır olmadan Safari'de
+     * liste "yapış yapış" durur, parmak bırakıldığında kaymaya
+     * devam etmez. */
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Sürükleme sırasında imlecin üzerinde olduğu sütun vurgulanır.
@@ -215,11 +332,34 @@
 .cy-task__grip {
     touch-action: none;
     cursor: grab;
-    padding: .1rem .15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Sürüklemenin BAŞLADIĞI tek nokta burasıdır; bu yüzden
+     * dokunma hedefi de kartın tam yüksekliğine yayılır. Eskiden
+     * .1rem dolgulu bir metin parçasıydı — parmakla vurulması zor,
+     * ıskalandığında ise sürükleme hiç başlamıyordu.
+     * (Mobil ölçüsü aşağıdaki @media bölümünde 44px'e çıkar.) */
+    align-self: stretch;
+    min-width: 24px;
+    margin: -.6rem 0 -.6rem -.65rem;   /* kartın kendi dolgusunu yut */
+    padding: .6rem .25rem .6rem .5rem;
     color: var(--cy-text-muted);
     font-size: 1rem;
     line-height: 1.1;
     user-select: none;
+    border-radius: var(--cy-radius) 0 0 var(--cy-radius);
+    transition: background-color .15s ease, color .15s ease;
+
+    /* -webkit-tap-highlight-color : iOS/Android, dokunulan öğenin
+     * üstüne gri bir dikdörtgen basar. Sürükleme boyunca parmağın
+     * altında kalan bu leke, taşıma hareketini kirli gösterir. */
+    -webkit-tap-highlight-color: transparent;
+}
+
+.cy-task__grip:hover {
+    background: var(--cy-brand-100);
+    color: var(--cy-brand-600);
 }
 
 .cy-task__grip:active {
@@ -323,6 +463,23 @@
 body.cy-dragging {
     user-select: none;
     cursor: grabbing;
+
+    /* Sürükleme boyunca hiçbir yerde kaydırma/yakınlaştırma hareketi
+     * başlamasın. Tutamaçtaki touch-action:none yalnızca parmağın
+     * BAŞLADIĞI öğe için geçerlidir; bu satır güvenceyi tüm sayfaya
+     * yayar. (overflow:hidden BİLEREK kullanılmadı: masaüstünde
+     * kaydırma çubuğunu kaldırıp sayfayı yanal olarak sıçratıyordu.) */
+    touch-action: none;
+}
+
+/* KAYDIRMA YAPIŞMASI SÜRÜKLEME SIRASINDA KAPATILIR.
+ * Mobilde .cy-board'a verilen "scroll-snap-type: x mandatory",
+ * otomatik kaydırmanın (autoScroll) yazdığı her scrollLeft değerini
+ * anında en yakın sütuna geri yapıştırıyordu — sonuç, kartı
+ * yandaki sütuna taşımaya çalışırken panonun titremesiydi.
+ * Yapışma yalnızca kullanıcı serbestçe gezinirken anlamlıdır. */
+body.cy-dragging .cy-board {
+    scroll-snap-type: none;
 }
 
 /* Asıl kart: DOM'da gezerek yer tutucu görevi görür. */
@@ -406,8 +563,17 @@ body.cy-dragging {
 @media (max-width: 767.98px) {
     .cy-task-form-grid {
         flex-direction: column;
+
+        /* align-items:flex-start (yukarıdaki kural) DİKEY dizilimde
+         * anlamını değiştirir: satır yönünde dikey hizalamaydı,
+         * sütun yönünde YATAY hizalamaya döner ve çocukları
+         * "içeriğin genişliği kadar" büzer. Bu yüzden Başlık ve
+         * Açıklama kutuları telefonda modalın yalnızca sol yarısını
+         * kaplıyordu. "stretch" onları tam genişliğe yayar. */
+        align-items: stretch;
     }
 
+    .cy-task-form-grid__main,
     .cy-task-form-grid__meta {
         flex-basis: auto;
         width: 100%;
@@ -576,24 +742,239 @@ kbd {
 
 
 /* ==================================================================
- *  MOBİL
+ *  DOKUNMATİK CİHAZLAR (genişlikten BAĞIMSIZ)
+ * ------------------------------------------------------------------
+ *  Bu bölümdeki kurallar EKRAN GENİŞLİĞİNE değil, GİRDİ TÜRÜNE
+ *  bakar. Sebebi basit: "üzerine gelme" (hover) diye bir kavramın
+ *  olmadığı her cihazda — tablet dâhil, ne kadar geniş olursa
+ *  olsun — bu düzeltmeler gerekir. Ölçüyü 575px'e bağlamak,
+ *  yatay tutulan bir tableti masaüstü sanmak demekti.
  * ================================================================== */
+@media (hover: none) {
+    /* Butonlar her zaman görünür: soluk bırakılırsa dokunmatik
+     * kullanıcı onları hiçbir zaman göremez. */
+    .cy-task__actions {
+        opacity: 1;
+    }
+
+    /* Dokunma hedefi en az 44×44px (WCAG 2.5.8 / Apple HIG önerisi).
+     * 34px'lik masaüstü ölçüsü parmakla ıskalanıyordu. */
+    .cy-btn-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    /* Tutamaç da aynı kurala uyar; sürüklemenin başladığı TEK
+     * nokta olduğu için burada ıskalamanın bedeli en yüksektir. */
+    .cy-task__grip {
+        min-width: 44px;
+        font-size: 1.15rem;
+    }
+
+    /* Kart gövdesinin kaydırmayı engellememesi için: parmak kartın
+     * üzerinden geçerken sütunu kaydırabilmeli. Yalnızca tutamaç
+     * "touch-action: none" taşır (bkz. .cy-task__grip). */
+    .cy-task {
+        touch-action: pan-y;
+    }
+
+    .cy-task,
+    .cy-column__add {
+        -webkit-tap-highlight-color: rgba(11, 92, 181, .12);
+    }
+
+    /* --- KART DÜZENİ DOKUNMATİKTE DEĞİŞİR ---
+     * Masaüstünde iki ikon kartın sağında ALT ALTA durur; 34px'lik
+     * ölçüde bu bir yer sorunu değildi. Dokunmatikte ikonlar 44px'e
+     * çıkınca aynı dizilim kartın sağ sütununu 88px yaptı: içeriği
+     * iki satırlık bir kart bile devasa görünüyor, bir ekrana ancak
+     * üç kart sığıyordu.
+     *
+     * Çözüm: butonları ROZETLERLE AYNI SATIRA, kartın sağ alt
+     * köşesine almak. Öncelik ve tarih rozetleri sola yaslı olduğu
+     * için o satırın sağı zaten boştu; boş yeri kullanmak karta hiç
+     * yükseklik eklemez.
+     *
+     * Konumlandırma "absolute" ile yapılır ve karşılığında rozet
+     * satırına butonların genişliği kadar sağ boşluk bırakılır
+     * (aşağıdaki padding-right). Bu boşluk olmadan uzun bir tarih
+     * rozeti butonların ALTINA kayıp okunamaz hâle gelirdi;
+     * ayrılan payla rozetler bir alt satıra sarılır. */
+    .cy-task {
+        grid-template-columns: auto 1fr;
+    }
+
+    .cy-task__actions {
+        position: absolute;
+        right: .5rem;
+        bottom: .45rem;
+        flex-direction: row;
+        gap: .35rem;
+    }
+
+    /* 2 buton (44px) + aradaki boşluk + kenar payı */
+    .cy-task__meta {
+        padding-right: 6.2rem;
+        min-height: 2.4rem;
+        align-items: center;
+    }
+}
+
+
+/* ==================================================================
+ *  MOBİL YERLEŞİM
+ * ================================================================== */
+@media (max-width: 767.98px) {
+    /* --- Başlık ızgarası üç satıra bölünür ---
+     * 1. satır: marka (iki sütunu birden kaplar)
+     * 2. satır: arama (tam genişlik)
+     * 3. satır: sayaç | "Yeni Görev" */
+    .cy-head {
+        grid-template-columns: 1fr auto;
+        gap: .75rem .5rem;
+    }
+
+    .cy-head__brand  { grid-column: 1 / -1; }
+    .cy-head__search { grid-column: 1 / -1; justify-self: stretch; }
+    .cy-head__count  { grid-column: 1; justify-self: start; }
+    .cy-head__add    { grid-column: 2; justify-self: end; }
+
+    /* Alt bilgideki PHP sürümü telefonda yer israfı; ipucu
+     * cümlesinin tam satırı kullanması daha değerli. */
+    .cy-hint__version {
+        display: none;
+    }
+}
+
 @media (max-width: 575.98px) {
+    /* Sayfa kenar boşluğu: dar ekranda Bootstrap'in varsayılan
+     * dolgusu panoya kalan genişliği daha da kısar. */
+    .cy-board-container {
+        padding-left: .6rem;
+        padding-right: .6rem;
+    }
+
+    .cy-card__body--board {
+        padding: .6rem;
+    }
+
     /* Telefonda 300px sütun ekranın tamamını kaplar; biraz
      * daraltıp yanındaki sütunun kenarını göstermek, panonun
      * yatayda kaydığını kullanıcıya sezdirir. */
     .cy-column {
         flex-basis: 84vw;
+
+        /* KAYDIRMA YAPIŞMASI (scroll snap):
+         * Parmağı bıraktığınızda pano rastgele bir yerde durmaz,
+         * en yakın sütunu ortalayarak durur. İki sütunun yarısını
+         * birden gösteren bir duruş, telefonda kartların
+         * okunmasını zorlaştırıyordu. */
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .cy-board {
+        /* "proximity" değil "mandatory": parmak nereye bırakılırsa
+         * bırakılsın mutlaka bir sütuna hizalanır. Yarım sütunda
+         * durma ihtimalini tamamen kaldırır. */
+        scroll-snap-type: x mandatory;
+
+        /* Kaydırma çubuğu telefonda zaten kendiliğinden gizlenir;
+         * ayrılan yeri kartlara verelim. */
+        padding-bottom: .35rem;
+    }
+
+    /* Sütun listesi telefonda daha uzun olabilir: yatayda tek
+     * sütun görüldüğü için dikeyde daha çok kart göstermek,
+     * kullanıcının aşağı kaydırma sayısını azaltır. */
+    .cy-column__list {
+        max-height: 68vh;
+    }
+
+    /* SÜTUN BAŞLIĞI SABİTLENİR.
+     * Uzun bir listeyi aşağı kaydırırken başlık ekrandan çıkınca
+     * kullanıcı hangi sütunda olduğunu kaybediyordu. Başlığı
+     * yapışkan yapmak bu bağlamı korur.
+     *
+     * NOT: .cy-column'daki "overflow: hidden" sticky'yi ÖLDÜRÜR
+     * (yapışkan öğe, kaydırılabilen en yakın ataya göre konumlanır;
+     * overflow:hidden olan kutu bu rolü üstlenir ama kaydırmadığı
+     * için yapışma hiç tetiklenmez). Bu yüzden aşağıda "clip" ile
+     * değiştiriliyor: köşe yuvarlamasını yine kırpar ama kutuyu
+     * kaydırma konteyneri yapmaz. */
+    .cy-column {
+        overflow: clip;
+    }
+
+    .cy-column__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
 
     .cy-search {
         width: 100%;
     }
 
-    /* Dokunmatikte butonlar her zaman görünsün: "üzerine gelme"
-     * diye bir kavram yoktur. */
-    .cy-task__actions {
-        opacity: 1;
+    /* Öncelik pilleri telefonda YATAY dizilir: dar sağ panel
+     * artık tam genişlik olduğu için üç pil rahatça yan yana
+     * sığar ve form üç satır kısalır. */
+    .cy-priority-picker--stacked {
+        flex-direction: row;
+    }
+
+    .cy-priority-picker--stacked .cy-priority-picker__option {
+        text-align: center;
+        padding: .65rem .35rem;
+    }
+
+    /* Açıklama kutusu 8 satır (rows="8") kalırsa telefonda form
+     * gereksiz uzar; kullanıcı sınıflandırma panelini görmek için
+     * boş bir metin kutusunu kaydırmak zorunda kalır. Yükseklik
+     * "height" ile verilir — "min-height" rows'u ezmez, yalnızca
+     * alt sınır koyar. */
+    #description {
+        height: 6.5rem;
+    }
+
+    .cy-title-input {
+        /* 16px altındaki yazı tipi boyutları iOS Safari'de alana
+         * odaklanınca sayfayı OTOMATİK YAKINLAŞTIRIR; kullanıcı
+         * yazmayı bitirdiğinde sayfa uzaklaşmaz ve düzen bozuk
+         * kalır. 1rem (=16px) bu davranışı tamamen kapatır. */
+        font-size: 1rem;
+    }
+
+    .cy-footer-note__sep {
+        display: none;
+    }
+
+    .cy-footer-note__links a {
+        display: block;
+    }
+}
+
+
+/* ==================================================================
+ *  GÜVENLİ ALAN (çentikli / yuvarlak köşeli telefonlar)
+ * ------------------------------------------------------------------
+ *  index.php'deki "viewport-fit=cover" sayfayı ekranın tamamına
+ *  yayar; karşılığında alt bilgi, iPhone'un ana ekran çubuğunun
+ *  ALTINDA kalabilir. env(safe-area-inset-*) tarayıcının bildirdiği
+ *  bu güvenli olmayan payı verir.
+ *
+ *  max() ile sarmalanır: güvenli alanı olmayan cihazlarda değer 0
+ *  döner ve boşluk tamamen kaybolurdu.
+ * ================================================================== */
+@media (max-width: 575.98px) {
+    @supports (padding: max(0px)) {
+        .cy-board-container {
+            /* Yukarıdaki mobil kuralı .6rem veriyordu; güvenli alan
+             * daha büyükse o kazanır, değilse .6rem korunur. */
+            padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+            padding-left:   max(.6rem, env(safe-area-inset-left));
+            padding-right:  max(.6rem, env(safe-area-inset-right));
+        }
     }
 }
 

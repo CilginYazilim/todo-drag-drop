@@ -41,6 +41,7 @@ Fare · Dokunmatik · Klavye · CSRF korumalı AJAX
 | [Kurulum](#kurulum) | [API uç noktaları](#api-uç-noktaları) |
 | [Hangi dosya ne işe yarıyor?](#hangi-dosya-ne-işe-yarıyor) | [Güvenlik](#güvenlik) |
 | [Veritabanı](#veritabanı) | [Özelleştirme](#özelleştirme) |
+| [Mobil uyum](#mobil-uyum) | |
 
 ---
 
@@ -50,6 +51,7 @@ Sütunlar arasında sürüklenebilen görev kartları. Bıraktığınız yer **v
 
 - **Sürükle-bırak** — kartı sütun içinde yeniden sıralayın veya başka sütuna taşıyın
 - **Üç girdi yöntemi** — fare, dokunmatik ekran ve klavye; üçü de aynı işi yapar
+- **Telefonda da tam işlevli** — 44px dokunma hedefleri, sütunlara yapışan kaydırma, tam ekran form ([ayrıntı](#mobil-uyum))
 - **Öncelik ve tarih** — düşük/orta/yüksek renk kodlu, son teslim tarihi geçenler işaretlenir
 - **Tam CRUD** — sütun bazlı hızlı ekleme, modal ile düzenleme, onaylı silme
 - **Anlık arama** — başlık ve açıklamada, 300 ms geciktirmeli
@@ -195,13 +197,15 @@ pointerup   → yeni sırayı sunucuya yaz
 
 **Ekleme noktası nasıl bulunur?** Sütundaki her kartın dikey **orta noktasına** bakılır. İmleç bir kartın orta noktasının üstündeyse kart ondan önce, değilse sonra gelir. Bu basit kural, kartlar farklı yüksekliklerde olsa bile doğru çalışır.
 
-### Üç kritik ayrıntı
+### Beş kritik ayrıntı
 
 | Ayrıntı | Neden |
 |---------|-------|
 | `pointer-events: none` (ghost üzerinde) | Açık olsaydı `elementFromPoint` her zaman ghost'u bulur, altındaki sütunu asla göremezdik ve kart hiçbir yere bırakılamazdı. |
 | `touch-action: none` (yalnızca tutamaçta) | Bu satır olmadan dokunmatik cihazda sürükleme başlamaz. **Yalnızca** tutamaca verilir: kartın tamamına verilseydi telefonda sütunu parmakla kaydırmak imkânsız olurdu. |
 | Kenarda otomatik kaydırma | Sürükleme sırasında normal kaydırma çalışmaz. Bu olmadan ekrana sığmayan bir sütunun altına kart taşımak mümkün değildir. |
+| `setPointerCapture()` | Parmak hızla kartın dışına çıktığında tarayıcı `pointercancel` gönderip sürüklemeyi kesiyordu; kart yarı yolda başladığı yere dönüyordu. Yakalama, o işaretleyicinin tüm olaylarını karta yönlendirir ve kesilmeyi tamamen ortadan kaldırır. |
+| Kopyanın parmaktan yukarı kaydırılması | Fare imleci birkaç piksellik bir oktur, kartı kapatmaz; **parmak ise kartın tamamını örter.** Ghost'u imlecin tam altına koymak, mobil kullanıcıyı hem taşıdığı karta hem bırakma noktasına kör bırakıyordu. `TOUCH_GHOST_LIFT` yalnızca `pointerType === 'touch'` iken uygulanır. |
 
 ### Klavye erişimi
 
@@ -214,6 +218,63 @@ Sürükle-bırak yalnızca fare/parmakla kullanılabilen bir özelliktir. Klavye
 | <kbd>Esc</kbd> | Süren sürüklemeyi iptal et |
 
 `Ctrl` bilinçli olarak zorunludur: yalnızca ok tuşları kullanılsaydı, kartlar arasında gezinmek isteyen klavye kullanıcısı istemeden panoyu yeniden düzenlerdi.
+
+---
+
+## Mobil uyum
+
+Kanban panosu **yatayda geniş**, telefon ekranı ise dardır. Bu çelişki, "responsive" etiketi yapıştırıp geçilecek bir konu değil; panonun telefonda kullanılabilir olması için düzenin birkaç yerde farklı davranması gerekir.
+
+### Ölçü değil, girdi türü sorulur
+
+Mobil düzeltmelerin çoğu ekran genişliğine değil, **`@media (hover: none)`** sorgusuna bağlıdır.
+
+```css
+@media (hover: none) { … }   /* "üzerine gelinebilen bir işaretleyici yok" */
+```
+
+Genişlik yanıltıcıdır: küçültülmüş bir masaüstü penceresinin klavyesi ve faresi vardır, geniş bir tabletin ise yoktur. Dokunma hedefi büyütmek, soluk butonları görünür kılmak gibi düzeltmelerin gerçek koşulu "ekran dar mı" değil, **"parmakla mı kullanılıyor"** sorusudur.
+
+Aynı sorgu alt bilgideki ipucunu da seçer: fareli cihazda <kbd>Ctrl</kbd> + ok tuşları anlatılır, dokunmatikte tutamaç. Telefonda klavye kısayolu yazmak yanlış bilgi vermektir.
+
+### Dokunma hedefleri
+
+| Öğe | Masaüstü | Dokunmatik |
+|-----|----------|------------|
+| Düzenle / Sil ikonları | 34 px | **44 px** |
+| Sürükleme tutamacı | dar bir metin parçası | **44 px genişlik, kartın tam yüksekliği** |
+
+44 px, WCAG 2.5.8 ve Apple HIG'in ortaklaştığı alt sınırdır. Tutamaç için ayrıca önemlidir: **sürüklemenin başladığı tek noktadır**, ıskalandığında özellik hiç çalışmaz.
+
+Ama ikonları 44 px yapmak yeni bir sorun doğurdu — masaüstündeki "kartın sağında alt alta iki ikon" dizilimi 88 px'lik bir sütuna dönüştü ve kartlar devasa göründü. Çözüm, butonları **rozetlerle aynı satıra**, kartın sağ alt köşesine almak: öncelik ve tarih rozetleri sola yaslı olduğu için o satırın sağı zaten boştu.
+
+### Sütunlara yapışan kaydırma
+
+```css
+.cy-board  { scroll-snap-type: x mandatory; }
+.cy-column { scroll-snap-align: start; scroll-snap-stop: always; }
+```
+
+Parmağı bıraktığınızda pano rastgele bir yerde durmaz, en yakın sütunu hizalar. İki sütunun yarısını birden gösteren bir duruş, telefonda kartların okunmasını zorlaştırıyordu.
+
+> **Ama sürükleme sırasında yapışma kapatılır** (`body.cy-dragging .cy-board`). Açık kalsaydı, otomatik kaydırmanın yazdığı her `scrollLeft` değeri anında en yakın sütuna geri yapışır ve kartı yandaki sütuna taşımaya çalışırken pano titrerdi.
+
+### Diğer düzeltmeler
+
+| Sorun | Çözüm |
+|-------|-------|
+| Pano sonuna gelince hareket sayfaya devredip "aşağı çekip yenile"yi tetikliyordu | `overscroll-behavior: contain` — kaydırma kutunun içinde kalır |
+| Uzun listede sütun başlığı ekrandan çıkınca hangi sütunda olunduğu kayboluyordu | Başlık `position: sticky`. Bunun için `.cy-column`'daki `overflow: hidden` → `clip` yapıldı: `hidden` kutuyu kaydırma konteyneri sayar ve yapışmayı sessizce öldürür |
+| Modal telefonda dar kalıyor, klavye açılınca başlığı ekran dışına itiliyordu | `modal-fullscreen-sm-down` — tam ekran |
+| Tam ekran modal altta gri şerit bırakıyordu | `.modal-dialog`'un `height: 100%`'i, araya giren `<form>`'a akmıyordu; forma da verildi |
+| Başlık/Açıklama kutuları modalın yalnızca sol yarısını kaplıyordu | `align-items: flex-start`, dikey dizilime geçince anlamını değiştirip çocukları içeriğe büzüyordu → `stretch` |
+| Başlık kutusuna dokununca iOS sayfayı yakınlaştırıp öyle bırakıyordu | Yazı tipi boyutu `1rem` (=16px); Safari 16px altındaki alanlarda otomatik yakınlaştırır |
+| Arama hiçbir şey bulmadığında pano boş sütunlar gösteriyor, kullanıcı bunu "görevlerim silindi" diye okuyabiliyordu | Panonun üstünde açıkça uyarı |
+| Aramadan sonra sanal klavye ekranın yarısını kaplamaya devam ediyordu | <kbd>Enter</kbd> → ara ve `blur()`; <kbd>Esc</kbd> → temizle |
+| Sürüklemenin başladığı an parmağın altında görsel olarak belirsizdi | `navigator.vibrate(10)` — destekleyen cihazlarda 10 ms titreşim, yoksa sessizce atlanır |
+| Çentikli telefonlarda alt bilgi ana ekran çubuğunun altında kalıyordu | `viewport-fit=cover` + `env(safe-area-inset-*)`, `max()` ile sarmalanmış |
+
+> **Bilerek yapılmayan:** `maximum-scale=1` / `user-scalable=no`. Yakınlaştırmayı kapatmak sayfayı az gören kullanıcılar için kullanılamaz kılan bir erişilebilirlik hatasıdır — "mobil görünüm daha derli toplu olsun" diye ödenmeyecek kadar yüksek bir bedel.
 
 ---
 
@@ -369,6 +430,8 @@ Katkı için depoyu çatallayın ve pull request gönderin.
 **[Çılgın Yazılım](https://cilginyazilim.com)**
 
 Açık kaynak, öğretici PHP örnekleri
+
+**[Örnek kodlar &amp; kütüphane](https://cilginyazilim.com/kutuphane)** · [Bu projenin sayfası](https://cilginyazilim.com/kutuphane/surukle-birak-gorev-panosu)
 
 [cilginyazilim.com](https://cilginyazilim.com) · [github.com/CilginYazilim](https://github.com/CilginYazilim)
 
