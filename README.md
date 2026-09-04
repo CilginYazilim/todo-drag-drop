@@ -18,17 +18,34 @@ Fare · Dokunmatik · Klavye · CSRF korumalı AJAX
 
 **Türkçe** · [English](README.en.md)
 
+
+[**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/todo-drag-drop/) · [Kaynak Kütüphanesi](https://cilginyazilim.com/kutuphane/surukle-birak-gorev-panosu) · [cilginyazilim.com](https://cilginyazilim.com)
+
 </div>
 
 ---
 
 <div align="center">
 
-![Görev panosu ekran görüntüsü](assets/images/screenshot.png)
+## Canlı Demo
 
-<em>Dört sütun, renkli öncelik şeritleri, gecikmiş görev uyarıları ve tamamlanan işlerde üstü çizili başlıklar.</em>
+**Kurulum yok, kayıt yok, indirme yok — tarayıcınızdan 3 saniyede deneyin.**
+
+<a href="https://cilginyazilim.com/kutuphane/uygulama/todo-drag-drop/"><img src="https://img.shields.io/badge/CANLI_DEMOYU_A%C3%87-0b5cb5?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=061321" alt="Canlı Demoyu Aç" height="42"></a>
+<a href="https://cilginyazilim.com/kutuphane/surukle-birak-gorev-panosu"><img src="https://img.shields.io/badge/KAYNAK_KODU_%C4%B0NCELE-0ea5e9?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=061321" alt="Kaynak Kodu İncele" height="42"></a>
+<a href="https://github.com/CilginYazilim/todo-drag-drop/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/ZIP_%C4%B0ND%C4%B0R-16a34a?style=for-the-badge&logo=github&logoColor=white&labelColor=061321" alt="ZIP İndir" height="42"></a>
+
+<br><br>
+
+<a href="https://cilginyazilim.com/kutuphane/uygulama/todo-drag-drop/" title="Canlı demoyu açmak için tıklayın">
+  <img src="assets/images/screenshot.png" alt="Sürükle-bırak görev panosu canlı demo önizlemesi" width="860">
+</a>
+
+<sub>Dört sütun, renkli öncelik şeritleri, gecikmiş görev uyarıları ve tamamlanan işlerde üstü çizili başlıklar.<br>▲ Görsele tıklayarak demoyu açabilirsiniz</sub>
 
 </div>
+
+> **Kartı fareyle sürükleyin, telefonda parmakla taşıyın, klavyeyle Ctrl+ok tuşlarıyla oynatın.**
 
 ---
 
@@ -114,6 +131,44 @@ DB_HOST=127.0.0.1   DB_NAME=cy_todo   DB_USER=root   DB_PASS=gizli
 ### Canlıya alırken
 
 Hata ayıklama kendiliğinden kapanır — `APP_DEBUG` sabit `true` değildir, ortama bakar: yerel adreslerde (`localhost`, `127.0.0.1`, `*.test`, `*.local`) açık, gerçek bir alan adında kapalıdır. İstediğiniz zaman `APP_DEBUG` ortam değişkeniyle bunu elle de belirleyebilirsiniz.
+
+### Ortam değişkenleri
+
+Depo kökündeki **`.env`** dosyasına yazın; `system/config.php` dosyasına
+hiç dokunmayın:
+
+```bash
+cp .env.example .env        # Windows: copy .env.example .env
+```
+
+`.env` `.gitignore` içindedir: depoya gönderilmez ve dağıtım (deploy) onu
+**silmez**. `system/config.php` ise depoda durur ve her dağıtımda depodaki
+sürümle değiştirilir — parolayı oraya yazarsanız hem GitHub'a gider hem de
+ilk deploy'da kaybolur.
+
+Dosyayı hiç oluşturmasanız da uygulama çalışır; aşağıdaki varsayılanlar
+yerel bir XAMPP kurulumuna göredir.
+
+**Değer arama sırası:** `.env` → sunucunun gerçek ortam değişkeni
+(Apache `SetEnv`, systemd…) → buradaki varsayılan.
+
+| Değişken | Varsayılan | Ne işe yarar |
+|---|---|---|
+| `DB_HOST` | `127.0.0.1` | Veritabanı sunucusu |
+| `DB_NAME` | `cy_todo` | Veritabanı adı |
+| `DB_USER` | `root` | Kullanıcı |
+| `DB_PASS` | *(boş)* | Şifre — **koda yazmayın** |
+| `APP_TIMEZONE` | `Europe/Istanbul` | PHP'nin saat dilimi |
+| `APP_DEBUG` | *ortamdan* | Hataların ekrana basılıp basılmayacağı |
+
+**`APP_TIMEZONE` neden var?** XAMPP'ın `php.ini` dosyasındaki
+`date.timezone`, MySQL'in kullandığı sistem diliminden farklı olabilir.
+Test makinesinde PHP `Europe/Berlin`, MySQL `Europe/Istanbul`
+kullanıyordu; aynı anı anlatan iki satır bir saat farklı görünüyordu.
+Zaman **hesapları** SQL tarafında yapıldığı için doğruydu, ama ekrana
+basılan saat kayıyordu. Artık dilim açıkça sabitleniyor — sunucunuz başka
+bir bölgedeyse bu değişkeni tanımlamanız yeterli, koda dokunmayın.
+
 
 ---
 
