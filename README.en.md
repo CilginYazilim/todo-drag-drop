@@ -116,17 +116,32 @@ git clone https://github.com/CilginYazilim/todo-drag-drop.git
 mysql -u root -p < todo-drag-drop/cy_todo.sql
 ```
 
+> **Optional — your own database credentials:** run
+> `cp .env.example .env` (Windows: `copy .env.example .env`) and fill in the
+> `DB_*` lines. It runs without the file too; the defaults match a local XAMPP
+> install (`root`, empty password). `.env` is in `.gitignore`, so your password
+> never reaches the repository.
+
 > Using phpMyAdmin: **Import → Choose file → `cy_todo.sql` → Go**
 
 Then open: **`http://localhost/todo-drag-drop/`**
 
 ### Using a different database
 
-Edit the `DB_*` lines in `system/config.php` **or** define environment variables on your server (the preferred route, so the password never lands in the code):
+Create a `.env` file at the repository root and leave `system/config.php` alone:
 
+```bash
+cp .env.example .env        # Windows: copy .env.example .env
 ```
-DB_HOST=127.0.0.1   DB_NAME=cy_todo   DB_USER=root   DB_PASS=secret
+
+```env
+DB_HOST=127.0.0.1
+DB_NAME=cy_todo
+DB_USER=root
+DB_PASS=secret
 ```
+
+See [Environment variables](#environment-variables) below for the full list.
 
 ### Going to production
 
@@ -178,6 +193,7 @@ set this variable instead of touching the code.
 ```
 todo-drag-drop/
 ├── index.php                 ← UI skeleton + modals (the board renders EMPTY)
+├── .env.example              ← Database credentials (optional) — in .gitignore
 ├── cy_todo.sql               ← Database setup and a sample board
 │
 ├── system/

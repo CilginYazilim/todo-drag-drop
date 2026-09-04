@@ -116,17 +116,32 @@ git clone https://github.com/CilginYazilim/todo-drag-drop.git
 mysql -u root -p < todo-drag-drop/cy_todo.sql
 ```
 
+> **İsteğe bağlı — kendi veritabanı bilgileriniz:**
+> `cp .env.example .env` (Windows: `copy .env.example .env`) deyip `DB_*`
+> satırlarını doldurun. Bu dosya olmadan da çalışır; varsayılanlar yerel bir
+> XAMPP kurulumuna (`root`, boş parola) göredir. `.env` `.gitignore`
+> içindedir — parolanız depoya gitmez.
+
 > phpMyAdmin kullanıyorsanız: **İçe Aktar → Dosya seç → `cy_todo.sql` → Başlat**
 
 Ardından tarayıcıdan: **`http://localhost/todo-drag-drop/`**
 
 ### Farklı bir veritabanı kullanacaksanız
 
-`system/config.php` içindeki `DB_*` satırlarını düzenleyin **veya** sunucunuzda ortam değişkeni tanımlayın (şifreyi koda yazmamak için tercih edilen yol):
+Depo kökünde bir `.env` dosyası açın; `system/config.php` dosyasına dokunmayın:
 
+```bash
+cp .env.example .env        # Windows: copy .env.example .env
 ```
-DB_HOST=127.0.0.1   DB_NAME=cy_todo   DB_USER=root   DB_PASS=gizli
+
+```env
+DB_HOST=127.0.0.1
+DB_NAME=cy_todo
+DB_USER=root
+DB_PASS=gizli
 ```
+
+Ayrıntı ve tam değişken listesi için aşağıdaki [Ortam değişkenleri](#ortam-değişkenleri) bölümüne bakın.
 
 ### Canlıya alırken
 
@@ -177,6 +192,7 @@ bir bölgedeyse bu değişkeni tanımlamanız yeterli, koda dokunmayın.
 ```
 todo-drag-drop/
 ├── index.php                 ← Arayüz iskeleti + modallar (pano BOŞ çizilir)
+├── .env.example              ← Veritabanı bilgileri (isteğe bağlı) — .gitignore içinde
 ├── cy_todo.sql               ← Veritabanı kurulumu ve örnek pano
 │
 ├── system/
